@@ -1,0 +1,11 @@
+addi $t0, $t0, 100
+add $a0, $a1, $a2
+lw $t6, 0($t8)
+mul $t4, $t2, $t4
+add $a0, $a1, $a2
+lw $t6, 0($t8)
+add $a3, $a1, $a2
+lw $t6, 0($t8)
+add $v1, $a3, $a2
+sw $t6, 16($t4)
+
