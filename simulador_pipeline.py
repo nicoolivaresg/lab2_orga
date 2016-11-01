@@ -57,7 +57,7 @@ registers = {
 	'$a1': '00100',
 	'$a2': '00101',
 	'$a3': '00110',
-	'$t''': '00111',
+	'$t0': '00111',
 	'$t1': '01000',
 	'$t2': '01001',
 	'$t3': '01010',
@@ -175,44 +175,7 @@ B = 0
 ### IMPLENTACION O DEFINICION DE FUNCIONES Y ClASES###
 def get_register_code(reg):
 	if reg:
-		if reg == '$zero':
-			return '00000'
-		elif reg == '$v0':
-			return '00001'
-		elif reg == '$v1':
-			return '00010'
-		elif reg == '$a0':
-			return '00011'
-		elif reg == '$a1':
-			return '00100'
-		elif reg == '$a2':
-			return '00101'
-		elif reg == '$a3':
-			return '00110'
-		elif reg == '$t0':
-			return '00111'
-		elif reg == '$t1':
-			return '01000'
-		elif reg == '$t2':
-			return '01001'
-		elif reg == '$t3':
-			return '01010'
-		elif reg == '$t4':
-			return '01011'
-		elif reg == '$t5':
-			return '01100'
-		elif reg == '$t6':
-			return '01101'
-		elif reg == '$t7':
-			return '01110'
-		elif reg == '$t8':
-			return '01111'
-		elif reg == '$t9':
-			return '10000'
-		elif reg == 'lo':
-			return '10001'
-		elif reg == 'hi':
-			return '10010'
+		return registers[reg]
 
 def get_instruction_type(mnemonic):
 	if mnemonic:
@@ -285,7 +248,7 @@ def I_Instruction(mnemonic,rs,rt,imm):
 	word = '{}{}{}{}'.format(opcode,rs,rt,imm)
 	return word
 
-def encodeInstruction(lista):
+def encodeInstruction(lista):	
 	if lista:
 		tipo = get_instruction_type(lista[0])
 		if tipo == 'R':
@@ -370,7 +333,6 @@ def updateRegisterMem():
 	### READING REGISTERS ###
 	word = IF_ID['Instruction']
 	rs= getRs(word)
-	print rs
 	rt =getRt(word)
 	rd =getRd(word)
 	register_mem['ReadReg1']= rs
@@ -392,7 +354,7 @@ def leerArchivo(ruta):
 	i=0
 	labels = []
 	for linea in file:
-		linea = linea.replace(' ,',' ').split()
+		linea = linea.replace(',',' ').split()
 		if linea:
 			if len(linea) != 0:
 				if len(linea) == 1: #LABEL
@@ -457,6 +419,9 @@ def dump_registers():
 def alu(A,B):
 	return 0
 
+def sign_extend(imm):
+	largo = len(imm)
+	
 
 
 def instruction_fetch():
@@ -467,12 +432,28 @@ def instruction_fetch():
 	#Almacena en el buffer entre etapas la instruccion de desde IF y el PC+4
 	IF_ID['PC+4'] = PC_4
 	IF_ID['Instruction'] = IR
-	PC =PC_4
+	PC = PC_4
+	print 'Buffer IF/ID -> '+ str(IF_ID['PC+4']) +' '+ IF_ID['Instruction']
 	return IF_ID
 
 def instruction_decode():
 	updateControlUnit()
 	updateRegisterMem()
+	ID_EX['PC+4'] = PC
+	ID_EX['Branch'] = control_unit['Branch']
+	ID_EX['MemRead'] = control_unit['MemRead']
+	ID_EX['MemtoReg'] = control_unit['MemtoReg']
+	ID_EX['MemWrite'] = control_unit['MemWrite']
+	ID_EX['ALUOp'] = control_unit['ALUOp']
+	ID_EX['ALUSrc'] = control_unit['ALUSrc']
+	ID_EX['RegWrite'] = control_unit['RegWrite']
+	ID_EX['ReadData1'] = control_unit['ReadData1']
+	ID_EX['ReadData2'] = control_unit['ReadData2']
+	ID_EX['Sign-extend_imm'] = 
+	ID_EX['Funct'] =
+	ID_EX['Rt'] =
+	ID_EX['Rd'] =
+	ID_EX['RegDst'] =
 	return 0
 
 def execution(rs,rt,rd):
@@ -538,4 +519,4 @@ if len(sys.argv) == 2:
 	#print newR,newJ,newI
 	dump_registers()
 else:
-	print('Faltan argumentos\n')
+	print 'Faltan argumentos\n'
