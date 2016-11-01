@@ -118,7 +118,14 @@ alu_operations = {
 control_unit = {'RegDst':0,'Branch':0,'MemRead':0,'MemtoReg':0,'ALUOp':'xx','MemWrite':0,'ALUSrc':0,'RegWrite':0}
 muxes = {'RegDst': 0, 'ALUSrc': 0, 'MemtoReg': 0,'PCSrc': 0}
 alu_control_unit = {'ALUControlOut': '011'}
-register_mem = {'ReadReg1': '', 'ReadReg2': '','WriteReg': '', 'WriteData': 0, 'ReadData1': 0, 'ReadData2': 0}
+register_mem = {
+	'ReadReg1': '',
+	'ReadReg2': '',
+	'WriteReg': '',
+	'WriteData': 0,
+	'ReadData1': 0,
+	'ReadData2': 0
+	}
 instructions_memory = []
 #Buffer para IF/ID contiene [intruccion_word_32_bits,PC+4]
 IF_ID = {
@@ -335,14 +342,16 @@ def updateRegisterMem():
 	rs= getRs(word)
 	rt =getRt(word)
 	rd =getRd(word)
-	register_mem['ReadReg1']= rs
-	register_mem['ReadReg2']= rt
+	register_mem['ReadReg1'] = rs
+	register_mem['ReadReg2'] = rt
 	if control_unit['RegDst'] == 0:
 		register_mem['WriteReg'] = rt
-	else:
+	elif control_unit['RegDst'] == 1:
 		register_mem['WriteReg'] = rd
 	### WRITING DATA ###
-	#register_mem['ReadData1'] = registers[rs]
+	register_mem['ReadData1'] = state[rs]
+	register_mem['ReadData2'] = state[rt]
+
 
 
 
@@ -419,36 +428,13 @@ def dump_registers():
 def alu(A,B):
 	return 0
 
-def sign_extend(imm):
-	largo = len(imm)
-	if largo == 16  and imm[0] == '0'
-
-def to_decimal(num):
-	i = len(num)-1
-	total = 0
-	exp = 0
-	while i>=0:
-		if num[i] == '1':
-			total = total + 2^
-		exp += 1
-		i-=1
-
-def instruction_fetch():
-	global PC
-	IR = encodeInstruction(instructions_memory[PC]) #Acceder a instruccion memory en el index de PC y codificarla a 32 bits
-	print IR
-	PC_4 =PC+1
-	#Almacena en el buffer entre etapas la instruccion de desde IF y el PC+4
+def updateBufferIF_ID(PC_4,IR):
 	IF_ID['PC+4'] = PC_4
 	IF_ID['Instruction'] = IR
-	PC = PC_4
-	print 'Buffer IF/ID -> '+ str(IF_ID['PC+4']) +' '+ IF_ID['Instruction']
-	return IF_ID
 
-def instruction_decode():
-	updateControlUnit()
-	updateRegisterMem()
-	ID_EX['PC+4'] = PC
+def updateBufferID_EX():
+	word = IF_ID['Instruction']
+	ID_EX['PC+4'] = IF_ID['PC+4']
 	ID_EX['Branch'] = control_unit['Branch']
 	ID_EX['MemRead'] = control_unit['MemRead']
 	ID_EX['MemtoReg'] = control_unit['MemtoReg']
@@ -456,16 +442,66 @@ def instruction_decode():
 	ID_EX['ALUOp'] = control_unit['ALUOp']
 	ID_EX['ALUSrc'] = control_unit['ALUSrc']
 	ID_EX['RegWrite'] = control_unit['RegWrite']
-	ID_EX['ReadData1'] = control_unit['ReadData1']
-	ID_EX['ReadData2'] = control_unit['ReadData2']
-	ID_EX['Sign-extend_imm'] = 
-	ID_EX['Funct'] =
-	ID_EX['Rt'] =
-	ID_EX['Rd'] =
-	ID_EX['RegDst'] =
+	ID_EX['ReadData1'] = register_mem['ReadData1']
+	ID_EX['ReadData2'] = register_mem['ReadData2']
+	ID_EX['Sign-extend_imm'] = sign_extend(getImm(word))
+	ID_EX['Funct'] = getFunct(word)
+	ID_EX['Rt'] = getRt(word)
+	ID_EX['Rd'] = getRd(word)
+	ID_EX['RegDst'] = control_unit['RegDst']
+
+def updateBufferEX_MEM():
 	return 0
 
-def execution(rs,rt,rd):
+def sign_extend(imm):
+	largo = len(imm)
+	nueva = ''
+	if largo == 16  and imm[0] == '0':
+		ceros = '0' * (32 -largo)
+		nueva = ceros+imm
+	return nueva
+
+def to_decimal(num):
+	i = len(num)-1
+	total = 0
+	exp = 0
+	while i>=0:
+		if num[i] == '1':
+			total = total + pow(2,exp)
+		exp += 1
+		i-=1
+	return total
+
+def checkBranch():
+	branch = EX_MEM['Branch']
+	if branch == 1 and EX_MEM['Zero'] == 1:
+		return 1
+	else:
+		return 0
+
+def instruction_fetch():
+	global PC
+	IR = encodeInstruction(instructions_memory[PC]) #Acceder a instruccion memory en el index de PC y codificarla a 32 bits
+	print IR[:6]
+	#print IR
+	PC_4 =PC+1
+	estadoBranch = checkBranch()
+	if  estadoBranch == 1:
+		PC = EX_MEM['Add_result']
+	elif estadoBranch == 0:
+		PC = PC_4
+	updateBufferIF_ID(PC_4,IR)
+	return 0
+
+def instruction_decode():
+	word = IF_ID['Instruction']
+	updateControlUnit()
+	updateRegisterMem()
+	updateBufferID_EX()
+	return 0
+
+def execution():
+
 	return 0
 
 def data_memory(rs,rt,rd):
@@ -495,22 +531,25 @@ def mux(linea_control, entradaA, entradaB):
 			return entradaB
 
 def getOpcode(word):
-	return word[0:5]
+	return word[0:6]
 
 def getRs(word):
-	return word[6:10]
+	return word[6:11]
 
 def getRt(word):
-	return word[11:15]
+	return word[11:16]
 
 def getRd(word):
-	return word[16:20]
+	return word[16:21]
+
+def getShamt(word):
+	return word[21:26]
 
 def getFunct(word):
-	return word[27:31]
+	return word[26:32]
 
 def getImm(word):
-	return word[16:31]
+	return word[16:32]
 
 ### BLOQUE PRINCIPAL ###
 
