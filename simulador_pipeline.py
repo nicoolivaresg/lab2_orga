@@ -317,17 +317,20 @@ def updateControlUnit():
 		control_unit['RegWrite'] = 0
 		control_unit['Branch'] = 1
 
-def updateALUControlUnit(funct):
+def updateALUControlUnit():
+	funct = ID_EX['Funct']
+	print funct +' funct entrada de alu control'
 	ALUOp = control_unit['ALUOp']
+	print ALUOp +' ALUOp entrada de alu control'
 	if ALUOp == '00':
 		alu_control_unit['ALUControlOut'] = '010' #add
 	elif ALUOp == 'x1':
 		alu_control_unit['ALUControlOut'] = '110' #sub
 	elif ALUOp == '1x':
-		funct = funct[2:5]
+		funct = funct[2:6]
 		if funct == '0000':	
 			alu_control_unit['ALUControlOut'] = '010' #add
-		elif funct == '0010':	
+		elif funct == '00010':	
 			alu_control_unit['ALUControlOut'] = '110' #sub
 		elif funct == '0100':	
 			alu_control_unit['ALUControlOut'] = '000' #and
@@ -335,6 +338,7 @@ def updateALUControlUnit(funct):
 			alu_control_unit['ALUControlOut'] = '001' #or
 		elif funct == '1010':	
 			alu_control_unit['ALUControlOut'] = '111' #slt
+	print alu_control_unit['ALUControlOut'] + ' ALUOutput salida de alu control'
 
 def updateRegisterMem():
 	### READING REGISTERS ###
@@ -475,9 +479,9 @@ def to_decimal(num):
 def checkBranch():
 	branch = EX_MEM['Branch']
 	if branch == 1 and EX_MEM['Zero'] == 1:
-		return 1
+		muxes['PCSrc'] = 1
 	else:
-		return 0
+		muxes['PCSrc'] = 0
 
 def instruction_fetch():
 	global PC
@@ -485,10 +489,9 @@ def instruction_fetch():
 	print IR[:6]
 	#print IR
 	PC_4 =PC+1
-	estadoBranch = checkBranch()
-	if  estadoBranch == 1:
+	if muxes['PCSrc'] == 1:
 		PC = EX_MEM['Add_result']
-	elif estadoBranch == 0:
+	elif muxes['PCSrc'] == 0:
 		PC = PC_4
 	updateBufferIF_ID(PC_4,IR)
 	return 0
@@ -501,7 +504,8 @@ def instruction_decode():
 	return 0
 
 def execution():
-
+	updateALUControlUnit()
+	updateBufferEX_MEM()
 	return 0
 
 def data_memory(rs,rt,rd):
@@ -560,6 +564,7 @@ if len(sys.argv) == 2:
 	while PC < len(instructions_memory):
 		SALIDA_IF = instruction_fetch()
 		SALIDA_ID = instruction_decode()
+		SALIDA_EX = execution()
 	#print to_binary(20,6)
 	#newR = R_Instruction('add','$t0','$t1','$t2')
 	#newJ = J_Instruction('j',3)
