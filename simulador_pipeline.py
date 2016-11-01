@@ -3,11 +3,7 @@ import datetime
 import bitstring
 
 ### DEFINICION DE VARIABLES GLOBALES ####
-IF_flag = 0
-ID_flag = 0
-EX_flag = 0
-MEM_flag = 0
-WB_flag = 0
+MEMORY = [0] * 200000
 PC = 0
 instructions_type= {
 	'add':'R',
@@ -112,8 +108,11 @@ funct = {
 	'la':None
 	}
 alu_operations = {
-	'add': '+',
-	'sub': '-'
+	'010': '+',
+	'110': '-',
+	'000': 'and',
+	'001': 'or',
+	'111': 'slt',
 	}
 control_unit = {'RegDst':0,'Branch':0,'MemRead':0,'MemtoReg':0,'ALUOp':'xx','MemWrite':0,'ALUSrc':0,'RegWrite':0}
 muxes = {'RegDst': 0, 'ALUSrc': 0, 'MemtoReg': 0,'PCSrc': 0}
@@ -171,11 +170,19 @@ MEM_WB = {
 	'MemtoReg':0,
 	'RegWrite':0,
 	'ReadData':0,
-	'ALU_Result':0,
+	'ALU_Output':0,
 	'MUXRegDst_Output':''
 	}
-A = 0
-B = 0
+ALU = {
+	'A':0,
+	'B':0,
+	'Result':0,
+	'Zero':0
+	}
+DATA_MEMORY = {
+	'ReadData': 0
+	}
+
 
 ### IMPORTACION DE FUNCIONES Y CLASES####
 
@@ -308,25 +315,32 @@ def updateControlUnit():
 		control_unit['RegWrite'] = 0
 		control_unit['Branch'] = 1
 	elif opcode == '000100': #Instruction tipo I beq
-		control_unit['ALUOp'] = '01'
+		control_unit['ALUOp'] = 'x1'
 		control_unit['RegDst'] = 0
 		control_unit['MemRead'] = 0
 		control_unit['MemWrite'] = 0
 		control_unit['MemtoReg'] = 0
-		control_unit['ALUSrc'] = 0
+		control_unit['ALUSrc'] = 1
 		control_unit['RegWrite'] = 0
+		control_unit['Branch'] = 1
+	elif opcode == '001000': #Instruction tipo I addi
+		control_unit['ALUOp'] = '11'
+		control_unit['RegDst'] = 0
+		control_unit['MemRead'] = 0
+		control_unit['MemWrite'] = 0
+		control_unit['MemtoReg'] = 0
+		control_unit['ALUSrc'] = 1
+		control_unit['RegWrite'] = 1
 		control_unit['Branch'] = 1
 
 def updateALUControlUnit():
 	funct = ID_EX['Funct']
-	print funct +' funct entrada de alu control'
-	ALUOp = control_unit['ALUOp']
-	print ALUOp +' ALUOp entrada de alu control'
+	ALUOp = ID_EX['ALUOp']
 	if ALUOp == '00':
 		alu_control_unit['ALUControlOut'] = '010' #add
 	elif ALUOp == 'x1':
 		alu_control_unit['ALUControlOut'] = '110' #sub
-	elif ALUOp == '1x':
+	elif ALUOp == '10' or ALUOp == '11':
 		funct = funct[2:6]
 		if funct == '0000':	
 			alu_control_unit['ALUControlOut'] = '010' #add
@@ -338,7 +352,6 @@ def updateALUControlUnit():
 			alu_control_unit['ALUControlOut'] = '001' #or
 		elif funct == '1010':	
 			alu_control_unit['ALUControlOut'] = '111' #slt
-	print alu_control_unit['ALUControlOut'] + ' ALUOutput salida de alu control'
 
 def updateRegisterMem():
 	### READING REGISTERS ###
@@ -378,8 +391,6 @@ def leerArchivo(ruta):
 				else: # R o I
 					instructions_memory.append(linea)
 			i+=1
-
-	#print labels
 	file.close()
 	return 0
 
@@ -429,8 +440,22 @@ def dump_registers():
 	file.close()
 	return 0
 
-def alu(A,B):
-	return 0
+def ALU_operate():
+	ALU['Result'] = 0
+	ALU['Zero'] = 0
+	if alu_control_unit['ALUControlOut'] == '000': # and
+		ALU['Result'] = ALU['A'] and ALU['B']
+	elif alu_control_unit['ALUControlOut'] == '110': # sub
+		ALU['Result'] = ALU['A'] - ALU['B']
+	elif alu_control_unit['ALUControlOut'] == '010': # add
+		ALU['Result'] = ALU['A'] + ALU['B']
+	elif alu_control_unit['ALUControlOut'] == '001': # or
+		ALU['Result'] = ALU['A'] or ALU['B']
+	elif alu_control_unit['ALUControlOut'] == '111': # slt
+		if ALU['A']<ALU['B']:
+			ALU['Result'] = 1
+		elif ALU['A']>=ALU['B']:
+			ALU['Result'] = 0
 
 def updateBufferIF_ID(PC_4,IR):
 	IF_ID['PC+4'] = PC_4
@@ -455,7 +480,29 @@ def updateBufferID_EX():
 	ID_EX['RegDst'] = control_unit['RegDst']
 
 def updateBufferEX_MEM():
+	EX_MEM['Add_result'] = add_sl2()
+	EX_MEM['Branch'] = ID_EX['Branch']
+	EX_MEM['MemRead'] = ID_EX['MemRead']
+	EX_MEM['MemtoReg'] = ID_EX['MemtoReg']
+	EX_MEM['MemWrite'] = ID_EX['MemWrite']
+	EX_MEM['RegWrite'] = ID_EX['RegWrite']
+	EX_MEM['ReadData2'] = ID_EX['ReadData2']
+	EX_MEM['Zero'] = ALU['Zero']
+	EX_MEM['ALU_Output'] = ALU['Result']
+	if ID_EX['RegDst'] == 0:
+		EX_MEM['MUXRegDst_Output'] = ID_EX['Rt']
+	elif ID_EX['RegDst'] == 1:
+		EX_MEM['MUXRegDst_Output'] = ID_EX['Rd']
 	return 0
+
+def updateBufferMEM_WB():
+	MEM_WB['MemtoReg'] = EX_MEM['MemtoReg']
+	MEM_WB['RegWrite'] = EX_MEM['RegWrite']
+	MEM_WB['ALU_Output'] = EX_MEM['ALU_Output']
+	MEM_WB['MUXRegDst_Output'] = EX_MEM['MUXRegDst_Output']
+
+def add_sl2():
+	return (to_decimal(ID_EX['Sign-extend_imm'])<<2) + ID_EX['PC+4']
 
 def sign_extend(imm):
 	largo = len(imm)
@@ -465,16 +512,7 @@ def sign_extend(imm):
 		nueva = ceros+imm
 	return nueva
 
-def to_decimal(num):
-	i = len(num)-1
-	total = 0
-	exp = 0
-	while i>=0:
-		if num[i] == '1':
-			total = total + pow(2,exp)
-		exp += 1
-		i-=1
-	return total
+
 
 def checkBranch():
 	branch = EX_MEM['Branch']
@@ -482,57 +520,6 @@ def checkBranch():
 		muxes['PCSrc'] = 1
 	else:
 		muxes['PCSrc'] = 0
-
-def instruction_fetch():
-	global PC
-	IR = encodeInstruction(instructions_memory[PC]) #Acceder a instruccion memory en el index de PC y codificarla a 32 bits
-	print IR[:6]
-	#print IR
-	PC_4 =PC+1
-	if muxes['PCSrc'] == 1:
-		PC = EX_MEM['Add_result']
-	elif muxes['PCSrc'] == 0:
-		PC = PC_4
-	updateBufferIF_ID(PC_4,IR)
-	return 0
-
-def instruction_decode():
-	word = IF_ID['Instruction']
-	updateControlUnit()
-	updateRegisterMem()
-	updateBufferID_EX()
-	return 0
-
-def execution():
-	updateALUControlUnit()
-	updateBufferEX_MEM()
-	return 0
-
-def data_memory(rs,rt,rd):
-	return 0
-
-def write_bach(rs,rt,rd):
-	return 0
-
-def to_binary(decimal, length):
-    '''
-    Given a decimal, generate the binary equivalent string of
-    given length.
-    e.g. binary(2, 5) = 00010
-    '''
-    b = bitstring.Bits(int=decimal, length=length)
-    return b.bin
-
-def add_4(entradaA):
-	return entradaA + 1
-
-
-def mux(linea_control, entradaA, entradaB):
-	if linea_control:
-		if linea_control == 1:
-			return entradaA
-		else:
-			return entradaB
 
 def getOpcode(word):
 	return word[0:6]
@@ -555,21 +542,88 @@ def getFunct(word):
 def getImm(word):
 	return word[16:32]
 
+def to_decimal(num):
+	i = len(num)-1
+	total = 0
+	exp = 0
+	while i>=0:
+		if num[i] == '1':
+			total = total + pow(2,exp)
+		exp += 1
+		i-=1
+	return total
+
+def to_binary(decimal, length):
+    '''
+    Given a decimal, generate the binary equivalent string of
+    given length.
+    e.g. binary(2, 5) = 00010
+    '''
+    b = bitstring.Bits(int=decimal, length=length)
+    return b.bin
+
+def IF():
+	global PC
+	IR = encodeInstruction(instructions_memory[PC]) #Acceder a instruccion memory en el index de PC y codificarla a 32 bits
+	PC_4 =PC+1
+	if muxes['PCSrc'] == 1:
+		PC = EX_MEM['Add_result']
+	elif muxes['PCSrc'] == 0:
+		PC = PC_4
+	updateBufferIF_ID(PC_4,IR)
+	return 0
+
+def ID():
+	word = IF_ID['Instruction']
+	updateControlUnit()
+	updateRegisterMem()
+	updateBufferID_EX()
+	return 0
+
+def EX():
+	updateALUControlUnit()
+	ALU['A'] = ID_EX['ReadData1']
+	if ID_EX['ALUSrc'] == 0:
+		ALU['B'] = ID_EX['ReadData2']
+	elif ID_EX['ALUSrc'] == 1:
+		ALU['B'] = to_decimal(ID_EX['Sign-extend_imm'])
+	ALU_operate()
+	updateBufferEX_MEM()
+	print ALU
+	return 0
+
+def MEM():
+	checkBranch()
+	ALUout = EX_MEM['ALU_Output']
+	if control_unit['MemRead'] == 1 and control_unit['MemWrite'] == 0:
+		MDR = MEMORY[ALUout]
+		MEM_WB['ReadData'] = MDR
+	elif control_unit['MemRead'] == 0 and control_unit['MemWrite'] == 1:
+		MEMORY[ALUout] = EX_MEM['ReadData2']
+	updateBufferMEM_WB()
+	return 0
+
+def WB():
+	if MEM_WB['RegWrite'] == 1:
+		registro_a_escribir = MEM_WB['MUXRegDst_Output']
+		if MEM_WB['MemtoReg'] == 1:
+			state[registro_a_escribir] = MEM_WB['ALU_Output'] 
+		elif MEM_WB['MemtoReg'] == 0:
+			state[registro_a_escribir] = MEM_WB['ReadData']
+	return 0
+
+
+
 ### BLOQUE PRINCIPAL ###
 
 if len(sys.argv) == 2:
 	leerArchivo(sys.argv[1])
-	#for elem in instructions_memory:
-	#	print elem
 	while PC < len(instructions_memory):
-		SALIDA_IF = instruction_fetch()
-		SALIDA_ID = instruction_decode()
-		SALIDA_EX = execution()
-	#print to_binary(20,6)
-	#newR = R_Instruction('add','$t0','$t1','$t2')
-	#newJ = J_Instruction('j',3)
-	#newI = I_Instruction('addi','$t1','$t2',16)
-	#print newR,newJ,newI
+		SALIDA_IF = IF()
+		SALIDA_ID = ID()
+		SALIDA_EX = EX()
+		SALIDA_MEM = MEM() 
+		SALIDA_WB = WB()
 	dump_registers()
 else:
 	print 'Faltan argumentos\n'
