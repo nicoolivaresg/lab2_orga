@@ -421,8 +421,17 @@ def alu(A,B):
 
 def sign_extend(imm):
 	largo = len(imm)
-	
+	if largo == 16  and imm[0] == '0'
 
+def to_decimal(num):
+	i = len(num)-1
+	total = 0
+	exp = 0
+	while i>=0:
+		if num[i] == '1':
+			total = total + 2^
+		exp += 1
+		i-=1
 
 def instruction_fetch():
 	global PC
