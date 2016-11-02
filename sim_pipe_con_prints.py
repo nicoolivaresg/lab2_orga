@@ -3,9 +3,9 @@ import datetime
 import bitstring
 
 ### DEFINICION DE VARIABLES GLOBALES ####
-ARREGLO = 0
-MEMORY = [0] * 200000
+ARREGLO = [0] * 5000
 PC = 0
+LIMITE = 0
 instructions_type= {
 	'add':'R',
 	'addi':'I',
@@ -21,10 +21,6 @@ instructions_type= {
 	'lw':'I',
 	'sw':'I',
 	'la':'I',
-	'slt':'R',
-	'bne':'I',
-	'lui':'I',
-	'ori':'I'
 	}
 instructions_opcode= {
 	'add':'000000',
@@ -33,18 +29,46 @@ instructions_opcode= {
 	'div': '000000',
 	'mflo':'000000',
 	'mfhi':'000000',
-	'slt':'000000',
 	'j':'000010',
 	'beq':'000100',
 	'addi':'001000',
 	'lw':'100011',
 	'sw':'101011',
-	'bne':'000101',
-	'lui':'001111',
-	'ori':'001101',
 	'blt':'111100',
 	'bgt':'111110',
-	'la':'111000'
+	'la':'111111'
+	}
+funct = {
+	'add':'010100',
+	'mul':'000000',
+	'nop': '000000' ,
+	'div': '011010',
+	'mflo':'001100',
+	'mfhi':'001010',
+	'addi':'000001',
+	'lw':  '000010',
+	'sw':  '000011',
+	'beq': '000100',
+	'blt': '000101',
+	'bgt': '000110',
+	'la':  '000111',
+	'j': '001000'
+	}
+alu_operations = {
+	'010100':'0000', #add
+	'000000':'0001', #mul
+	'000000':'0010', #nop
+	'011010':'0011', #div
+	'001100':'0100', #mflo
+	'001010':'0101', #mfhi
+	'000001':'0110', #addi
+	'000010':'0111', #lw
+	'000011':'1000', #sw
+	'000100':'1001', #beq
+	'000101':'1010', #blt
+	'000110':'1011', #bgt
+	'000111':'1100', #la
+	'001000':'1101' #j
 	}
 registers = {
 	'$zero': '00000',
@@ -88,33 +112,6 @@ R = {
 	'10001': 0,
 	'10010': 0
 	}
-funct = {
-	'add':'010100',
-	'addi':None,
-	'mul':'000000',
-	'j':None,
-	'beq':None,
-	'nop': '000000' ,
-	'div': '011010',
-	'mflo':'001100',
-	'mfhi':'001010',
-	'lw':None,
-	'sw':None,
-	'slt':'101010',
-	'bne':None,
-	'lui':None,
-	'ori':None,
-	'blt':None,
-	'bgt':None,
-	'la':None
-	}
-alu_operations = {
-	'010': '+',
-	'110': '-',
-	'000': 'and',
-	'001': 'or',
-	'111': 'slt',
-	}
 CONTROL_UNIT = {
 	'RegDst':0,
 	'Branch':0,
@@ -127,8 +124,8 @@ CONTROL_UNIT = {
 	'RegWrite':0
 	}
 muxes = {'RegDst': 0, 'ALUSrc': 0, 'MemtoReg': 0,'PCSrc': 0}
-alu_control_unit = {'ALUControlOut': '011'}
-register_mem = {
+ALU_CONTROL_UNIT = {'ALUControlOut': ''}
+REGISTROS = {
 	'ReadReg1': '',
 	'ReadReg2': '',
 	'WriteReg': '',
@@ -279,12 +276,19 @@ def encodeInstruction(lista):
 	if lista:
 		tipo = get_instruction_type(lista[0])
 		if tipo == 'R':
-			return R_Instruction(lista[0],lista[2],lista[3],lista[1])
+			if lista[0] == 'mfhi' or lista[0] == 'mflo':
+				return R_Instruction(lista[0],'000000','000000',lista[1])
+			else:
+				return R_Instruction(lista[0],lista[2],lista[3],lista[1])
 		elif tipo == 'I':
 			if lista[0] == 'lw' or lista[0] == 'sw':
 				return I_Instruction(lista[0],lista[3],lista[1],lista[2])
 			elif lista[0] == 'la':
 				return I_Instruction(lista[0],'$zero',lista[1],lista[2])
+			elif lista[0] == 'beq' or lista[0] == 'blt' or lista[0] == 'bgt':
+				return I_Instruction(lista[0],lista[2],lista[1],lista[3])
+			else:
+				return I_Instruction(lista[0],lista[2],lista[1],lista[3])
 		elif tipo == 'J':
 			return J_Instruction(lista[0],lista[1])
 		else:
@@ -292,7 +296,7 @@ def encodeInstruction(lista):
 
 def updateControlUnit():
 	word = IF_ID['Instruction']
-	#### ALU Control and MAIN Control #####
+	#### MAIN Control #####
 	opcode = getOpcode(word)
 	if  opcode == '000000': # Instruccion tipo R
 		CONTROL_UNIT['ALUOp1'] = 1
@@ -304,7 +308,7 @@ def updateControlUnit():
 		CONTROL_UNIT['ALUSrc'] = 0
 		CONTROL_UNIT['RegWrite'] = 1
 		CONTROL_UNIT['Branch'] = 0
-	elif opcode == '100011': #Instruccion LW
+	elif opcode == instructions_opcode['lw']: #Instruccion LW
 		CONTROL_UNIT['ALUOp1'] = 0
 		CONTROL_UNIT['ALUOp2'] = 0
 		CONTROL_UNIT['RegDst'] = 0
@@ -314,7 +318,7 @@ def updateControlUnit():
 		CONTROL_UNIT['ALUSrc'] = 1
 		CONTROL_UNIT['RegWrite'] = 1
 		CONTROL_UNIT['Branch'] = 0
-	elif opcode == '101011': #Instruction SW
+	elif opcode == instructions_opcode['sw']: #Instruction SW
 		CONTROL_UNIT['ALUOp1'] = 0
 		CONTROL_UNIT['ALUOp2'] = 0
 		CONTROL_UNIT['RegDst'] = 0
@@ -324,7 +328,7 @@ def updateControlUnit():
 		CONTROL_UNIT['ALUSrc'] = 1
 		CONTROL_UNIT['RegWrite'] = 0
 		CONTROL_UNIT['Branch'] = 0
-	elif opcode == '000010': #Instruction tipo J
+	elif opcode == instructions_opcode['j']: #Instruction tipo J
 		CONTROL_UNIT['ALUOp1'] = 1
 		CONTROL_UNIT['ALUOp2'] = 1
 		CONTROL_UNIT['RegDst'] = 0
@@ -334,7 +338,7 @@ def updateControlUnit():
 		CONTROL_UNIT['ALUSrc'] =  0
 		CONTROL_UNIT['RegWrite'] = 0
 		CONTROL_UNIT['Branch'] = 1
-	elif opcode == '000100': #Instruction tipo I beq
+	elif opcode == instructions_opcode['beq'] or opcode == instructions_opcode['bgt'] or opcode == instructions_opcode['blt']: #Instruction tipo I beq,bgt,blt
 		CONTROL_UNIT['ALUOp1'] = 0
 		CONTROL_UNIT['ALUOp2'] = 1
 		CONTROL_UNIT['RegDst'] = 0
@@ -344,77 +348,99 @@ def updateControlUnit():
 		CONTROL_UNIT['ALUSrc'] = 0
 		CONTROL_UNIT['RegWrite'] = 0
 		CONTROL_UNIT['Branch'] = 1
-	"""
-	elif opcode == '001000': #Instruction tipo I addi
-		CONTROL_UNIT['ALUOp'] = '11'
+	elif opcode == instructions_opcode['la']: #Instruction tipo I la
+		CONTROL_UNIT['ALUOp1'] = 1
+		CONTROL_UNIT['ALUOp2'] = 1
 		CONTROL_UNIT['RegDst'] = 0
 		CONTROL_UNIT['MemRead'] = 0
 		CONTROL_UNIT['MemWrite'] = 0
 		CONTROL_UNIT['MemtoReg'] = 0
 		CONTROL_UNIT['ALUSrc'] = 1
 		CONTROL_UNIT['RegWrite'] = 1
-		CONTROL_UNIT['Branch'] = 1
-		"""
+		CONTROL_UNIT['Branch'] = 0
+	elif opcode == instructions_opcode['addi']: #Instruction tipo I addi
+		CONTROL_UNIT['ALUOp1'] = 1
+		CONTROL_UNIT['ALUOp2'] = 1
+		CONTROL_UNIT['RegDst'] = 0
+		CONTROL_UNIT['MemRead'] = 0
+		CONTROL_UNIT['MemWrite'] = 0
+		CONTROL_UNIT['MemtoReg'] = 0
+		CONTROL_UNIT['ALUSrc'] = 1
+		CONTROL_UNIT['RegWrite'] = 1
+		CONTROL_UNIT['Branch'] = 0
+	elif opcode == instructions_opcode['div']: #Instruction tipo R div
+		CONTROL_UNIT['ALUOp1'] = 1
+		CONTROL_UNIT['ALUOp2'] = 1
+		CONTROL_UNIT['RegDst'] = 1
+		CONTROL_UNIT['MemRead'] = 0
+		CONTROL_UNIT['MemWrite'] = 0
+		CONTROL_UNIT['MemtoReg'] = 0
+		CONTROL_UNIT['ALUSrc'] = 0
+		CONTROL_UNIT['RegWrite'] = 1
+		CONTROL_UNIT['Branch'] = 0
+	elif opcode == instructions_opcode['mul']: #Instruction tipo R mul
+		CONTROL_UNIT['ALUOp1'] = 1
+		CONTROL_UNIT['ALUOp2'] = 1
+		CONTROL_UNIT['RegDst'] = 1
+		CONTROL_UNIT['MemRead'] = 0
+		CONTROL_UNIT['MemWrite'] = 0
+		CONTROL_UNIT['MemtoReg'] = 0
+		CONTROL_UNIT['ALUSrc'] = 0
+		CONTROL_UNIT['RegWrite'] = 1
+		CONTROL_UNIT['Branch'] = 0
+	elif opcode == instructions_opcode['mflo'] or opcode == instructions_opcode['mfhi']: #Instruction tipo R mul
+		CONTROL_UNIT['ALUOp1'] = 1
+		CONTROL_UNIT['ALUOp2'] = 1
+		CONTROL_UNIT['RegDst'] = 1
+		CONTROL_UNIT['MemRead'] = 0
+		CONTROL_UNIT['MemWrite'] = 0
+		CONTROL_UNIT['MemtoReg'] = 0
+		CONTROL_UNIT['ALUSrc'] = 0
+		CONTROL_UNIT['RegWrite'] = 1
+		CONTROL_UNIT['Branch'] = 0
 
 def updateALUControlUnit():
 	funct = ID_EX['Funct']
-	#print funct
 	ALUOp1 = ID_EX['ALUOp1']
 	ALUOp2 = ID_EX['ALUOp2']
-	if ALUOp1 == 0:
-		#Posbiles lw sw y beq
-		if ALUOp2 == 0:
-			#Posibles lw o sw
-			alu_control_unit['ALUControlOut'] = '010' #add
-		elif ALUOp2 == 1:
-			alu_control_unit['ALUControlOut'] = '110' #substract
-	elif ALUOp1 == 1:
-		#Operaciones tipo R, evaluar con funct
-		if funct == '100000':
-			alu_control_unit['ALUControlOut'] = '010' #add
-		elif funct == '100010':
-			alu_control_unit['ALUControlOut'] = '110' #substract
-		elif funct == '100100':
-			alu_control_unit['ALUControlOut'] = '000' #AND
-		elif funct == '100101':
-			alu_control_unit['ALUControlOut'] = '001' #OR
-		elif funct == '100000':				
-			alu_control_unit['ALUControlOut'] = '111' #Set on less than
+	ALU_CONTROL_UNIT['ALUControlOut'] = alu_operations[funct]
 
 def ALU_operate():
-	ALU['Control'] = alu_control_unit['ALUControlOut']
+	ALU['Control'] = ALU_CONTROL_UNIT['ALUControlOut']
 	ALU['Result'] = 0
 	ALU['Zero'] = 0
-	if ALU['Control'] == '010': #add
+	if ALU['Control'] == '0000': #add
 		ALU['Result'] = ALU['A'] + ALU['B']
-	elif ALU['Control'] == '110': #substract
-		ALU['Result'] = ALU['B'] - ALU['A']
-	elif ALU['Control'] == '000': #AND
-		ALU['Result'] = ALU['A'] and ALU['B']
-	elif ALU['Control'] == '001': # OR
-		ALU['Result'] = ALU['A'] or ALU['B']
-	elif ALU['Control'] =='111': #Set on less than
-		if ALU['A']<ALU['B']:
-			ALU['Result'] = 1
-		elif ALU['A']>=ALU['B']:
-			ALU['Result'] = 0
-
-def updateRegisterMem():
-	### READING REGISTERS ###
-	word = IF_ID['Instruction']
-	rs= getRs(word)
-	rt =getRt(word)
-	rd =getRd(word)
-	register_mem['ReadReg1'] = rs
-	register_mem['ReadReg2'] = rt
-	if CONTROL_UNIT['RegDst'] == 0:
-		register_mem['WriteReg'] = rt
-	elif CONTROL_UNIT['RegDst'] == 1:
-		register_mem['WriteReg'] = rd
-	### WRITING DATA ###
-	register_mem['ReadData1'] = R[rs]
-	register_mem['ReadData2'] = R[rt]
-
+	elif ALU['Control'] == '0001': #mul
+		ALU['Result'] = ALU['A'] * ALU['B']
+	elif ALU['Control'] == '0010': #nop
+		ALU['Result'] = 0
+	elif ALU['Control'] == '0011': #div
+		R[registers['lo']] = ALU['A']/ALU['B']
+		R[registers['hi']] = ALU['A']%ALU['B']
+	elif ALU['Control'] == '0100': #mflo
+		ALU['Result'] = ALU['A']
+	elif ALU['Control'] == '0101': #mfhi
+		ALU['Result'] = ALU['A']
+	elif ALU['Control'] == '0110': #addi
+		ALU['Result'] = ALU['A'] + ALU['B']
+	elif ALU['Control'] == '0111': #lw
+		ALU['Result'] = ALU['A'] + ALU['B']
+	elif ALU['Control'] == '1000': #sw
+		ALU['Result'] = ALU['A'] + ALU['B']
+	elif ALU['Control'] == '1001': #beq
+		if ALU['A'] == ALU['B']:
+			ALU['Zero']  = 1			
+	elif ALU['Control'] == '1010': #blt
+		if ALU['A'] <  ALU['B']:
+			ALU['Zero']  = 1
+	elif ALU['Control'] == '1011': #bgt
+		if ALU['A'] > ALU['B']:
+			ALU['Zero']  = 1
+	elif ALU['Control'] == '1100': #la
+		ALU['Result'] = ALU['B']
+	elif ALU['Control'] == '1101': #j
+		ALU['Zero'] = 1
 
 
 
@@ -424,6 +450,8 @@ def updateRegisterMem():
 def leerArchivo(ruta):
 	file=open(ruta,'r')
 	i=0
+	global LIMITE
+	LIMITE =0
 	labels = {}
 	#PASADA 1 para identificar las LABEL y su posicion
 	for linea in file:
@@ -431,38 +459,55 @@ def leerArchivo(ruta):
 		if linea:
 			if len(linea) != 0:
 				if len(linea) == 1: #LABEL
-					labels[linea[0]] = i
+					labels[linea[0].replace(':','')] = i+1
 				i+=1
-	file.close()		
+				LIMITE+=1
+	file.close()
+	LIMITE +=1		
 	file=open(ruta,'r')
 	#PASADA 2 para agregar lineas y cambiar las label a medida que salen
 	for linea in file:
 		linea = linea.replace(',',' ').split()
 		if linea:
 			if len(linea) != 0:
-				if len(linea) == 1: #LABEL
-					instructions_memory.append(linea)
-				elif len(linea) == 2: # JUMP
-					instructions_memory.append(linea)
-				elif len(linea) == 3: # I-Type lw la sw
-					imm_rs = linea[2]
-					descomp = imm_rs.replace('(',' ').replace(')',' ').split()
+				if len(linea) == 2: # JUMP o mfhi o mflo
 					nueva = []
-					if len(descomp) == 1: #la
+					if linea[0] == 'j':
+						nueva.append(linea[0])
+						nueva.append(labels[linea[1]])
+					elif linea[0] == 'mfhi' or linea[0] == 'mflo':
 						nueva.append(linea[0])
 						nueva.append(linea[1])
-						if descomp[0] != 'ARREGLO':
-							nueva.append(labels[descomp[0]])
+					instructions_memory.append(nueva)
+				elif len(linea) == 3: # I-Type lw la sw
+					nueva = []
+					if linea[0] == 'lw' or linea[0] == 'sw' or linea[0] == 'la':
+						imm_rs = linea[2]
+						descomp = imm_rs.replace('(',' ').replace(')',' ').split()
+						if len(descomp) == 1: #la
+							nueva.append(linea[0])
+							nueva.append(linea[1])
+							if descomp[0] != 'ARREGLO':
+								nueva.append(labels[descomp[0]])
+							else:
+								nueva.append(0)
 						else:
-							nueva.append(ARREGLO)
-					else:
-						nueva.append(linea[0])
-						nueva.append(linea[1])
-						nueva.append(descomp[0])
-						nueva.append(descomp[1])
+							nueva.append(linea[0])
+							nueva.append(linea[1])
+							nueva.append(descomp[0])
+							nueva.append(descomp[1])
+					
 					instructions_memory.append(nueva)				
 				elif len(linea) == 4: # R-Type or I-Type
-					instructions_memory.append(linea)
+					nueva = []
+					if linea[0] == 'beq' or linea[0] == 'blt' or linea[0] == 'bgt':
+						nueva.append(linea[0])
+						nueva.append(linea[1])
+						nueva.append(linea[2])
+						nueva.append(labels[linea[3]])
+					else:
+						nueva =linea
+					instructions_memory.append(nueva)
 				i+=1
 	file.close()
 	return 0
@@ -513,7 +558,17 @@ def dump_registers():
 	file.close()
 	return 0
 
-
+def updateRegistros():
+	### READING REGISTERS ###
+	word = IF_ID['Instruction']
+	rs= getRs(word)
+	rt =getRt(word)
+	rd =getRd(word)
+	REGISTROS['ReadReg1'] = rs
+	REGISTROS['ReadReg2'] = rt
+	### WRITING DATA ###
+	REGISTROS['ReadData1'] = R[rs]
+	REGISTROS['ReadData2'] = R[rt]
 
 def updateBufferIF_ID(PC_4,IR):
 	IF_ID['PC+4'] = PC_4
@@ -530,13 +585,34 @@ def updateBufferID_EX():
 	ID_EX['ALUOp2'] = CONTROL_UNIT['ALUOp2']
 	ID_EX['ALUSrc'] = CONTROL_UNIT['ALUSrc']
 	ID_EX['RegWrite'] = CONTROL_UNIT['RegWrite']
-	ID_EX['ReadData1'] = register_mem['ReadData1']
-	ID_EX['ReadData2'] = register_mem['ReadData2']
+	ID_EX['ReadData1'] = REGISTROS['ReadData1']
+	ID_EX['ReadData2'] = REGISTROS['ReadData2']
 	ID_EX['Sign-extend_imm'] = sign_extend(getImm(word))
-	ID_EX['Funct'] = getFunct(word)
 	ID_EX['Rt'] = getRt(word)
 	ID_EX['Rd'] = getRd(word)
 	ID_EX['RegDst'] = CONTROL_UNIT['RegDst']
+	ID_EX['Opcode'] = getOpcode(word)
+	if ID_EX['Opcode'] == '000000':
+		ID_EX['Funct'] = getFunct(word)
+	elif ID_EX['Opcode'] == instructions_opcode['j']:
+		ID_EX['Funct'] = funct['j']
+	elif ID_EX['Opcode'] == instructions_opcode['beq']:
+		ID_EX['Funct'] = funct['beq']
+	elif ID_EX['Opcode'] == instructions_opcode['addi']:
+		ID_EX['Funct'] = funct['addi']
+	elif ID_EX['Opcode'] == instructions_opcode['lw']:
+		ID_EX['Funct'] = funct['lw']
+	elif ID_EX['Opcode'] == instructions_opcode['sw']:
+		ID_EX['Funct'] = funct['sw']
+	elif ID_EX['Opcode'] == instructions_opcode['blt']:
+		ID_EX['Funct'] = funct['blt']
+	elif ID_EX['Opcode'] == instructions_opcode['bgt']:
+		ID_EX['Funct'] = funct['bgt']
+	elif ID_EX['Opcode'] == instructions_opcode['la']:
+		ID_EX['Funct'] = funct['la']
+
+
+
 
 def updateBufferEX_MEM():
 	EX_MEM['Add_result'] = add_sl2()
@@ -548,10 +624,6 @@ def updateBufferEX_MEM():
 	EX_MEM['ReadData2'] = ID_EX['ReadData2']
 	EX_MEM['Zero'] = ALU['Zero']
 	EX_MEM['ALU_Output'] = ALU['Result']
-	if ID_EX['RegDst'] == 0:
-		EX_MEM['MUXRegDst_Output'] = ID_EX['Rt']
-	elif ID_EX['RegDst'] == 1:
-		EX_MEM['MUXRegDst_Output'] = ID_EX['Rd']
 	return 0
 
 def updateBufferMEM_WB():
@@ -561,7 +633,8 @@ def updateBufferMEM_WB():
 	MEM_WB['MUXRegDst_Output'] = EX_MEM['MUXRegDst_Output']
 
 def add_sl2():
-	return (to_decimal(ID_EX['Sign-extend_imm'])<<2) + ID_EX['PC+4']
+	#return (to_decimal(ID_EX['Sign-extend_imm'])<<2) + ID_EX['PC+4']
+	return to_decimal(ID_EX['Sign-extend_imm'])+1
 
 def sign_extend(imm):
 	largo = len(imm)
@@ -571,12 +644,10 @@ def sign_extend(imm):
 		nueva = ceros+imm
 	return nueva
 
-
-
 def checkBranch():
-	branch = EX_MEM['Branch']
-	if branch == 1 and EX_MEM['Zero'] == 1:
+	if EX_MEM['Branch'] == 1 and EX_MEM['Zero'] == 1:
 		muxes['PCSrc'] = 1
+		print "!!!!!!!!!!!!!WARNING!!!!!!!!!!!!!!!!!!!!!BRANCH!!!!!!!!!!!!!!WARNING!!!!!!!!!!!!!!!!"
 	else:
 		muxes['PCSrc'] = 0
 
@@ -622,53 +693,72 @@ def to_binary(decimal, length):
     return b.bin
 
 def IF():
+	print '#################### INSTRUCTION FETCH ####################'
 	global PC
-	print instructions_memory[PC]
+	print 'PC: '+str(PC) + ' -> ' + str(instructions_memory[PC])
 	IR = encodeInstruction(instructions_memory[PC]) #Acceder a instruccion memory en el index de PC y codificarla a 32 bits
+	print 'IR: '+ str(IR)
 	PC_4 =PC+1
+	print 'MUX PCSrc: ' + str(muxes['PCSrc'])
 	if muxes['PCSrc'] == 1:
 		PC = EX_MEM['Add_result']
 	elif muxes['PCSrc'] == 0:
 		PC = PC_4
 	updateBufferIF_ID(PC_4,IR)
+	print 'IF/ID-> '+ str(IF_ID)
 	return 0
 
 def ID():
-	word = IF_ID['Instruction']
+	print '#################### INSTRUCTION DECODE ####################'
 	updateControlUnit()
-	updateRegisterMem()
+	print 'CONTROL UNIT-> '+ str(CONTROL_UNIT)
+	updateRegistros()
+	print 'REGISTER MEMORY-> '+ str(REGISTROS)
 	updateBufferID_EX()
 	return 0
 
 def EX():
+	print '#################### EXECUTION ####################'
+	print 'ID/EX-> '+ str(ID_EX)
 	updateALUControlUnit()
+	print 'ALU CONTROL UNIT-> '+ str(ALU_CONTROL_UNIT)
 	ALU['A'] = ID_EX['ReadData1']
 	if ID_EX['ALUSrc'] == 0:
 		ALU['B'] = ID_EX['ReadData2']
 	elif ID_EX['ALUSrc'] == 1:
 		ALU['B'] = to_decimal(ID_EX['Sign-extend_imm'])
 	ALU_operate()
+	if ID_EX['RegDst'] == 0:
+		EX_MEM['MUXRegDst_Output'] = ID_EX['Rt']
+	elif ID_EX['RegDst'] == 1:
+		EX_MEM['MUXRegDst_Output'] = ID_EX['Rd']
+	print 'ALU-> '+str(ALU)	
 	updateBufferEX_MEM()
 	return 0
 
 def MEM():
+	print '#################### MEM ####################'
+	print 'EX/MEM-> '+ str(EX_MEM)
 	checkBranch()
 	ALUout = EX_MEM['ALU_Output']
-	if CONTROL_UNIT['MemRead'] == 1 and CONTROL_UNIT['MemWrite'] == 0:
-		MDR = MEMORY[ALUout]
+	if EX_MEM['MemRead'] == 1 and EX_MEM['MemWrite'] == 0:
+		MDR = ARREGLO[ALUout]
 		MEM_WB['ReadData'] = MDR
-	elif CONTROL_UNIT['MemRead'] == 0 and CONTROL_UNIT['MemWrite'] == 1:
-		MEMORY[ALUout] = EX_MEM['ReadData2']
+	elif EX_MEM['MemRead'] == 0 and EX_MEM['MemWrite'] == 1:
+		ARREGLO[ALUout] = EX_MEM['ReadData2']
 	updateBufferMEM_WB()
 	return 0
 
 def WB():
-	if MEM_WB['RegWrite'] == 1:
-		registro_a_escribir = MEM_WB['MUXRegDst_Output']
-		if MEM_WB['MemtoReg'] == 1:
-			R[registro_a_escribir] = MEM_WB['ALU_Output'] 
-		elif MEM_WB['MemtoReg'] == 0:
-			R[registro_a_escribir] = MEM_WB['ReadData']
+	print '#################### WRITE BACK ####################'
+	print 'MEM/WB-> '+ str(MEM_WB)
+	if MEM_WB['MemtoReg'] == 1:
+		print 'Esto hay en el registro, previo escritura :'+str(R[resgistro_destino])
+		REGISTROS['WriteReg'] = MEM_WB['MUXRegDst_Output']
+		R[REGISTROS['WriteReg']] = MEM_WB['ReadData']
+	elif MEM_WB['MemtoReg'] == 0:
+		REGISTROS['WriteReg'] = MEM_WB['MUXRegDst_Output']
+		R[REGISTROS['WriteReg']] = MEM_WB['ALU_Output']
 	return 0
 
 
@@ -677,11 +767,44 @@ def WB():
 
 if len(sys.argv) == 2:
 	leerArchivo(sys.argv[1])
-	SALIDA_IF = IF()
-	SALIDA_ID = ID()
-	SALIDA_EX = EX()
-	SALIDA_MEM = MEM() 
-	SALIDA_WB = WB()
+	#for i in  instructions_memory:
+	#	print i
+	print 'PARTE EJECUCION'
+	##CICLO 1
+	IF()
+	##CICLO 2
+	ID()
+	IF()
+ 	##CICLO 3
+	EX()
+	ID()
+	IF()
+	##CICLO 4
+	MEM()
+	EX()
+	ID()
+	IF()
+	##CICLO 5
+	WB()
+	MEM()
+	EX()
+	ID()
+	IF()
+	##CICLO 6
+	WB()
+	MEM()
+	EX()
+	ID()
+	##CICLO 7
+	WB()
+	MEM()
+	EX()
+	##CICLO 8
+	WB()
+	MEM()
+	##CICLO 9
+	WB()
+	
 	dump_registers()
 else:
 	print 'Faltan argumentos\n'
