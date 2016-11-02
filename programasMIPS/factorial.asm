@@ -8,4 +8,6 @@ beq $t0, $t1, FIN
 mul $t2, $t0, $t2
 addi $t0, $t0, -1
 j WHILE
+
+
 FIN:

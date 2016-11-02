@@ -1,0 +1,10 @@
+Last update: 2016-11-02 20:12:01.943510
+1: EX_MEM[$t0 Rd] == ID_EX[$t0 Rt] en instruccion ['addi', '$t0', '$zero', '5'] PC: 2
+2: EX_MEM[$t1 Rd] == ID_EX[$t1 Rt] en instruccion ['addi', '$t1', '$zero', '1'] PC: 3
+3: EX_MEM[$t2 Rd] == ID_EX[$t2 Rt] en instruccion ['addi', '$t2', '$zero', '1'] PC: 4
+4: EX_MEM[$t0 Rd] == ID_EX[$t0 Rt] en instruccion ['beq', '$t0', '$t1', 9] PC: 4
+5: MEM_WB[$t0 Rd] == ID_EX[$t0 Rt] en instruccion ['beq', '$t0', '$t1', 9] PC: 5
+6: EX_MEM[$t0 Rd] == ID_EX[$t0 Rt] en instruccion ['beq', '$t0', '$t1', 9] PC: 5
+7: MEM_WB[$t0 Rd] == ID_EX[$t0 Rs] en instruccion ['beq', '$t0', '$t1', 9] PC: 5
+8: EX_MEM[$t2 Rd] == ID_EX[$t2 Rt] en instruccion ['mul', '$t2', '$t0', '$t2'] PC: 5
+9: MEM_WB[$t2 Rd] == ID_EX[$t2 Rt] en instruccion ['mul', '$t2', '$t0', '$t2'] PC: 5
