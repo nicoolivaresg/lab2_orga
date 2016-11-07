@@ -1,0 +1,6 @@
+Last update: 2016-11-06 21:42:38.898294
+1: EX_MEM.registerRD:$t1 == ID_EXregisterRt:$t1 en PC: 2
+2: EX_MEM.registerRD:$t7 == ID_EXregisterRt:$t7 en PC: 3
+3: EX_MEM.registerRD:$t8 == ID_EXregisterRt:$t8 en PC: 4
+4: EX_MEM.registerRD:$t9 == ID_EXregisterRt:$t9 en PC: 5
+5: EX_MEM.registerRD:$t0 == ID_EXregisterRt:$t0 en PC: 6

@@ -1,0 +1,35 @@
+Last update: 2016-11-06 22:05:23.726681
+1: EX_MEM.registerRD:$t9 == ID_EXregisterRt:$t9 en PC: 2
+2: EX_MEM.registerRD:$t6 == ID_EXregisterRt:$t6 en PC: 5
+3: MEM_WB.registerRD:$t6 ==ID_EXregisterRt:$t6 en  PC: 6
+4: EX_MEM.registerRD:$t9 == ID_EX.registerRs:$t9 en PC: 7
+5: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 9
+6: EX_MEM.registerRD:$t6 == ID_EXregisterRt:$t6 en PC: 10
+7: MEM_WB.registerRD:$t6 ==ID_EXregisterRt:$t6 en  PC: 11
+8: EX_MEM.registerRD:$t9 == ID_EX.registerRs:$t9 en PC: 12
+9: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 14
+10: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 15
+11: EX_MEM.registerRD:$t6 == ID_EXregisterRt:$t6 en PC: 16
+12: MEM_WB.registerRD:$t6 ==ID_EXregisterRt:$t6 en  PC: 17
+13: EX_MEM.registerRD:$t9 == ID_EX.registerRs:$t9 en PC: 18
+14: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 20
+15: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 21
+16: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 22
+17: EX_MEM.registerRD:$t6 == ID_EXregisterRt:$t6 en PC: 23
+18: MEM_WB.registerRD:$t6 ==ID_EXregisterRt:$t6 en  PC: 24
+19: EX_MEM.registerRD:$t9 == ID_EX.registerRs:$t9 en PC: 25
+20: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 27
+21: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 28
+22: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 29
+23: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 30
+24: EX_MEM.registerRD:$t6 == ID_EXregisterRt:$t6 en PC: 31
+25: MEM_WB.registerRD:$t6 ==ID_EXregisterRt:$t6 en  PC: 32
+26: EX_MEM.registerRD:$t9 == ID_EX.registerRs:$t9 en PC: 33
+27: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 35
+28: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 36
+29: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 37
+30: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 38
+31: EX_MEM.registerRD:$t5 == ID_EX.registerRs:$t5 en PC: 39
+32: EX_MEM.registerRD:$t6 == ID_EXregisterRt:$t6 en PC: 40
+33: MEM_WB.registerRD:$t6 ==ID_EXregisterRt:$t6 en  PC: 41
+34: EX_MEM.registerRD:$t9 == ID_EX.registerRs:$t9 en PC: 42
